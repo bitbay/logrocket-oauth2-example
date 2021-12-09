@@ -1,31 +1,72 @@
-let pgPool;
+'use strict';
 
-module.exports = (injectedPgPool) => {
-	pgPool = injectedPgPool;
+const { AccessTokens } = require('./db');
+const { RefreshTokens } = require('./db');
+const uuid = require('uuid-random');
 
-	return {
-		saveAccessToken: saveAccessToken,
-		getUserIDFromBearerToken: getUserIDFromBearerToken,
-	};
+module.exports = {
+    saveAccessToken: saveAccessToken,
+    getAccessToken: getAccessToken,
+    saveRefreshToken: saveRefreshToken,
+    getRefreshToken: getRefreshToken,
+    revokeRefreshToken: revokeRefreshToken
 };
 
-function saveAccessToken(accessToken, userID, cbFunc) {
-	const getUserQuery = `INSERT INTO access_tokens (access_token, user_id) VALUES ('${accessToken}', ${userID});`;
+function saveAccessToken(accessToken, clientId, expires, userId, callback) {
+    console.log('[ tokenDB ] saveAccessToken', accessToken, userId, expires instanceof Date);
 
-	pgPool.query(getUserQuery, (response) => {
-		cbFunc(response.error);
-	});
+    AccessTokens.create({
+        accessToken: accessToken,
+        userId: userId,
+        expires: expires instanceof Date ? expires.getTime() : expires,
+        clientId: clientId
+    })
+
+    callback();
 }
 
-function getUserIDFromBearerToken(bearerToken, cbFunc) {
-	const getUserIDQuery = `SELECT * FROM access_tokens WHERE access_token = '${bearerToken}';`;
+function getAccessToken(bearerToken, callback) {
+    console.log('[ tokenDB ] getAccessToken', bearerToken);
 
-	pgPool.query(getUserIDQuery, (response) => {
-		const userID =
-			response.results && response.results.rowCount == 1
-				? response.results.rows[0].user_id
-				: null;
+    let response = undefined;
 
-		cbFunc(userID);
-	});
+    const token = AccessTokens.get(t => t.accessToken === bearerToken);
+    if (token) {
+        response = Object.assign({}, token, { expires: new Date(token.expires)});
+    }
+
+    callback(response);
+}
+
+function saveRefreshToken(token, clientId, expires, userId, callback) {
+    console.log('[ tokenDB ] saveRefreshToken', token, userId, expires instanceof Date);
+
+    RefreshTokens.create({
+        refreshToken: token,
+        userId: userId,
+        expires: expires instanceof Date ? expires.getTime() : expires,
+        clientId: clientId
+    })
+
+    callback();
+}
+
+function getRefreshToken(refreshToken, callback) {
+    console.log('[ tokenDB ] getRefreshToken', refreshToken);
+
+    let response = undefined;
+
+    const token = RefreshTokens.get(t => t.refreshToken === refreshToken);
+    if (token) {
+        response = Object.assign({}, token, { expires: new Date(token.expires)});
+    }
+
+    callback(response);
+}
+
+function revokeRefreshToken(token, callback) {
+    console.log('[ tokenDB ] revokeRefreshToken', token);
+
+    RefreshTokens.remove(t => t.refreshToken === token);
+    callback();
 }

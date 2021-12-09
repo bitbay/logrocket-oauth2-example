@@ -1,50 +1,50 @@
-let pgPool;
+'use strict';
+const crypto = require('crypto');
+const uuid = require('uuid-random');
+const { Users } = require('./db');
 
-module.exports = (injectedPgPool) => {
-	pgPool = injectedPgPool;
-
-	return {
-		register: register,
-		getUser: getUser,
-		isValidUser: isValidUser,
-	};
+module.exports = {
+    register: register,
+    getUser: getUser,
+    isValidUser: isValidUser
 };
 
-var crypto = require("crypto");
 
-function register(username, password, cbFunc) {
-	var shaPass = crypto.createHash("sha256").update(password).digest("hex");
+function register(username, password, callback) {
+    let response = { error: undefined, results: null };
+    var shaPass = crypto.createHash("sha256").update(password).digest("hex");
+    console.log('[ userDB ] register', username, password);
 
-	const query = `INSERT INTO users (username, user_password) VALUES ('${username}', '${shaPass}')`;
+    if (Users.fetch(u => u.username === username)) {
+        response.error = `Failed to register user: User already exists`;
+    } else {
+        Users.create({ id: uuid(), username: username, user_password: shaPass });
+    }
 
-	pgPool.query(query, cbFunc);
+    callback(response);
 }
 
-function getUser(username, password, cbFunc) {
-	var shaPass = crypto.createHash("sha256").update(password).digest("hex");
+function getUser(username, password, callback) {
+    let response = { error: undefined, results: null };
+    var shaPass = crypto.createHash("sha256").update(password).digest("hex");
 
-	const getUserQuery = `SELECT * FROM users WHERE username = '${username}' AND user_password = '${shaPass}'`;
+    let user = Users.fetch(u => u.username === username && u.user_password === shaPass);
+    console.log('[ userDB ] getUser', user);
+    if (user) {
+        response.results = user;
+    }
 
-	pgPool.query(getUserQuery, (response) => {
-		cbFunc(
-			false,
-			response.results && response.results.rowCount === 1
-				? response.results.rows[0]
-				: null
-		);
-	});
+    callback(response.error, response.results);
 }
 
-function isValidUser(username, cbFunc) {
-	const query = `SELECT * FROM users WHERE username = '${username}'`;
+function isValidUser(username, callback) {
+    let response = { error: undefined, results: true };
+    let user = Users.fetch(u => u.username === username);
+    console.log('[ userDB ] isValidUser', user);
 
-	const checkUsrcbFunc = (response) => {
-		const isValidUser = response.results
-			? !(response.results.rowCount > 0)
-			: null;
+    if (user) {
+        response.results = false;
+    }
 
-		cbFunc(response.error, isValidUser);
-	};
-
-	pgPool.query(query, checkUsrcbFunc);
+    callback(response.error, response.results);
 }

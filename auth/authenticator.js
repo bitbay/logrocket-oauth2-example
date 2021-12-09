@@ -12,6 +12,8 @@ module.exports = (injectedUserDB) => {
 function registerUser(req, res) {
 	userDB.isValidUser(req.body.username, (error, isValidUser) => {
 		if (error || !isValidUser) {
+			console.log('[ auth ] registerUser error')
+
 			const message = error
 				? "Something went wrong!"
 				: "This user already exists!";
@@ -31,11 +33,11 @@ function registerUser(req, res) {
 	});
 }
 
-function login(query, res) {}
+function login(query, res) { }
 
 function sendResponse(res, message, error) {
 	res.status(error !== undefined ? 400 : 200).json({
 		message: message,
-		error: error,
+		error: error
 	});
 }

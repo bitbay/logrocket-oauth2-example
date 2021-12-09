@@ -2,43 +2,9 @@
 
 This is the source code for my article on [Implementing OAuth 2.0 in Node.js](https://blog.logrocket.com/implementing-oauth-2-0-in-node-js/).
 
-Before running the app, you have to set up the Postgres database. For this, install Postgres and create a new database called `logrocket_oauth2`.
+This fork uses `simple.db` node module and doesn´t have any other database dependencies.
 
-Then, run this script to create the tables:
-
-```sql
-CREATE TABLE public.users
-(
-    id serial,
-    username text,
-    user_password text,
-    PRIMARY KEY (id)
-)
-WITH (
-    OIDS = FALSE
-);
-
-ALTER TABLE public.users
-    OWNER to postgres;
-
-
-
-CREATE TABLE public.access_tokens
-(
-    id serial,
-    access_token text,
-    user_id integer,
-    PRIMARY KEY (id)
-)
-WITH (
-    OIDS = FALSE
-);
-
-ALTER TABLE public.access_tokens
-    OWNER to postgres;
-```
-
-After that, run the command to install the npm dependencies:
+To start the app, run the command to install the npm dependencies:
 
 ```
 npm install
@@ -51,3 +17,25 @@ node index.js
 ```
 
 The app will start at http://localhost:3000.
+
+### From the command-line
+To register a user:
+```
+$ curl -d "username=user&password=secret" -H "Content-Type: application/x-www-form-urlencoded" -X POST http://localhost:3000/auth/register
+{"message":"Success!!"}
+```
+To login the registered user:
+```
+$ curl -d "grant_type=password&username=user&password=secret&client_id=null&client_secret=null" -H "Content-Type: application/x-www-form-urlencoded" -X POST http://localhost:3000/auth/login
+{"token_type":"bearer","access_token":"a77637af70c4ffa57d33f5711101b8538f6da08d","expires_in":3600}
+```
+To access a restricted resource with a valid access token:
+```
+$ curl -H "Authorization: Bearer a77637af70c4ffa57d33f5711101b8538f6da08d" -X GET http://localhost:3000/test/hello
+Hello World OAuth2!
+```
+Accessing a restricted resource with no access token:
+```
+$ curl http://localhost:3000/test/hello
+OAuth2Error: The access token was not found
+```

@@ -1,7 +1,6 @@
 // Database imports
-const pgPool = require("./db/pgWrapper");
-const tokenDB = require("./db/tokenDB")(pgPool);
-const userDB = require("./db/userDB")(pgPool);
+const tokenDB = require("./db/tokenDB");
+const userDB = require("./db/userDB");
 
 // OAuth imports
 const oAuthService = require("./auth/tokenService")(userDB, tokenDB);
@@ -12,8 +11,10 @@ const express = require("express");
 const app = express();
 app.oauth = oAuth2Server({
 	model: oAuthService,
-	grants: ["password"],
+	grants: ["password", "refresh_token"],
+	accessTokenLifetime: 60,
 	debug: true,
+	passthroughErrors: false
 });
 
 const testAPIService = require("./test/testAPIService.js");
@@ -32,10 +33,11 @@ const routes = require("./auth/routes")(
 );
 const bodyParser = require("body-parser");
 
+app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(app.oauth.errorHandler());
 app.use("/auth", routes);
 app.use("/test", testAPIRoutes);
+app.use(app.oauth.errorHandler());
 
 const port = 3000;
 app.listen(port, () => {
